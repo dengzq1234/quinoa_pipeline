@@ -2,12 +2,28 @@
 
 This pipeline allows you to analyze a list of gene identifiers (e.g., from Novogene), filter for uncharacterized protein-coding genes, retrieve protein sequences, perform homology searches against the Arabidopsis proteome using DIAMOND, annotate hits with UniProt metadata, and prepare gene lists for functional enrichment analysis using g:Profiler.
 
-## Requirements
-- biopython
-- pandas
-- diamond
+## Install Environment
 
-## 📁 Project Structure
+install conda
+```
+# Download the Miniconda installer
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+
+# Run the installer
+bash Miniconda3-latest-Linux-x86_64.sh
+
+# Follow the prompts and restart your terminal or run:
+source ~/.bashrc
+```
+
+Install environment
+```
+conda create -n quinoa python=3.10 -y
+conda create -n quinoa_blast_env python=3.10 diamond pandas biopython requests  -y
+conda activate quinoa_blast_env
+```
+
+## Project Structure
 ```
 ├── data/
 │ ├── input/ # Input gene list
