@@ -13,4 +13,4 @@ source("scripts/01_filter_gene_list.R")
 # ── Step 2: Arabidopsis ortholog mapping + GO enrichment ───────────────────────
 source("scripts/02_annotate_and_go.R")
 
-message("[✓] Pipeline complete. Results in: ", output_dir)
+message("Pipeline complete. Results in: ", output_dir)
