@@ -2,9 +2,9 @@ library(rentrez)
 library(xml2)
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-input_file  <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/data/input/demo_gene.txt"
-output_file <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/demo_gene/01_demo_gene_filtered_genes.tsv"
-only_unchar <- TRUE   # TRUE = keep only uncharacterized protein-coding genes
+if (!exists("input_file"))  input_file  <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/data/input/demo_gene.txt"
+if (!exists("output_file")) output_file <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/demo_gene/01_demo_gene_filtered_genes.tsv"
+if (!exists("only_unchar")) only_unchar <- TRUE
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -87,4 +87,4 @@ out_df <- do.call(rbind, lapply(results, as.data.frame, stringsAsFactors=FALSE))
 dir.create(dirname(output_file), recursive=TRUE, showWarnings=FALSE)
 write.table(out_df, output_file, sep="\t", row.names=FALSE, quote=FALSE)
 
-message("[✓] Done. ", nrow(out_df), " genes written to ", output_file)
+message("Done. ", nrow(out_df), " genes written to ", output_file)

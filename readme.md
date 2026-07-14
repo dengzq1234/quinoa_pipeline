@@ -1,77 +1,94 @@
-# 🔍 Uncharacterized Gene Annotation and Functional Inference Pipeline
+# Uncharacterized Gene Annotation and Functional Inference Pipeline
 
-This pipeline allows you to analyze a list of gene identifiers (e.g., from Novogene), filter for uncharacterized protein-coding genes, retrieve protein sequences, perform homology searches against the Arabidopsis proteome using DIAMOND, annotate hits with UniProt metadata, and prepare gene lists for functional enrichment analysis using g:Profiler.
+This pipeline takes a list of quinoa NCBI gene IDs, filters for uncharacterized protein-coding genes, maps them to Arabidopsis orthologs via Ensembl Plants (biomaRt), and runs GO enrichment analysis using clusterProfiler — all within R.
 
-## Install Environment
+## Requirements
 
-install conda
-```
-# Download the Miniconda installer
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+Run once to install all required R packages:
 
-# Run the installer
-bash Miniconda3-latest-Linux-x86_64.sh
-
-# Follow the prompts and restart your terminal or run:
-source ~/.bashrc
+```r
+source("scripts/00_install_packages.R")
 ```
 
-Install environment
-```
-conda create -n quinoa python=3.10 -y
-conda create -n quinoa_blast_env python=3.10 diamond pandas biopython requests  -y
-conda activate quinoa_blast_env
-```
+Packages installed: `rentrez`, `xml2`, `biomaRt`, `clusterProfiler`, `org.At.tair.db`, `dplyr`
 
 ## Project Structure
+
 ```
 ├── data/
-│ ├── input/ # Input gene list
-│ └── reference/ # for arabidosis sequence database/
-├── fastas/ # Extracted FASTA files (protein) from target gene
-├── results/ # Final annotation results and GO list
-├── scripts/ # Python and Bash scripts used in pipeline
-├── README.md # This file
+│   ├── input/          # Input gene ID list (one NCBI gene ID per line)
+│   └── reference/      # Arabidopsis DIAMOND database (used by optional BLAST step)
+├── results/            # Output files per run
+├── scripts/
+│   ├── 00_install_packages.R       # one-time setup
+│   ├── 01_filter_gene_list.R       # core: filter uncharacterized protein-coding genes
+│   ├── 02_annotate_and_go.R        # core: biomaRt orthology + GO enrichment
+│   ├── optional/
+│   │   ├── get_fasta.R             # fetch protein FASTAs from NCBI (if needed)
+│   │   └── blast_against_arabidopsis.sh  # DIAMOND BLAST vs Arabidopsis (if needed)
+│   └── legacy/                     # original Python pipeline (archived)
+│       ├── 01_filter_gene_list.py
+│       ├── 02_get_fasta.py
+│       ├── 04_parse_annotation.py
+│       ├── 05_shinygo_analysis.md
+│       └── run_pipeline.sh
+└── readme.md
 ```
 
-## Pipeline Usage to get annotations
-Place your gene list in the folder: data/input/, e.g., demo_gene.txt.
+## Core Pipeline (two steps)
 
-Run the pipeline using the provided bash script:
+### Step 1 — Filter uncharacterized protein-coding genes
 
-```
-bash run_pipeline.sh data/input/demo_gene.txt
-```
+Edit the configuration block at the top of `scripts/01_filter_gene_list.R`:
 
-A folder will be automatically created under results/ using the input file name as the prefix (e.g., results/demo_gene/), containing the following files:
-
-- `01_<prefix>_filtered_genes.tsv` — filtered table of uncharacterized protein-coding genes.
-
-- `fastas/<prefix>/` — folder of FASTA files for each gene.
-
-- `03_<prefix>_blast_results.tsv` — DIAMOND results against Arabidopsis proteome.
-
-- `04_<prefix>_blast_with_annotations.tsv` — merged BLAST hits with UniProt annotation.
-
-- `04_<prefix>_shinygo_gene_list.txt` — gene list for downstream GO analysis.
-
-## Functional Enrichment Analysis
-After running the pipeline, follow the step-by-step guide in:
-```
-scripts/05_shinygo_analysis.md
-```
-This guide explains how to use g:Profiler (https://biit.cs.ut.ee/gprofiler/gost) to analyze the gene list found in:
-
-```
-results/<prefix>/04_shinygo_gene_list.txt
+```r
+input_file  <- "data/input/your_gene_list.txt"   # one NCBI gene ID per line
+output_file <- "results/your_prefix/01_filtered_genes.tsv"
+only_unchar <- TRUE   # FALSE to keep all protein-coding genes
 ```
 
-Set the organism to Arabidopsis thaliana and export results including enriched GO terms and pathways.
+Run:
+```r
+source("scripts/01_filter_gene_list.R")
+```
 
-Examples output
-https://biit.cs.ut.ee/gplink/l/a2Uyjp24XTu
+**Output:** TSV with columns `gene_id, gene_name, gene_desc, gene_type, refseq_genomic, refseq_mrna, refseq_peptide, related_acc`
+
+---
+
+### Step 2 — Arabidopsis ortholog mapping + GO enrichment
+
+Edit the configuration block at the top of `scripts/02_annotate_and_go.R`:
+
+```r
+input_file <- "data/input/your_gene_list.txt"         # raw gene ID list
+output_dir <- "results/your_prefix/"
+```
+
+Run:
+```r
+source("scripts/02_annotate_and_go.R")
+```
+
+**Outputs:**
+- `04_quinoa_arabidopsis_orthologs.tsv` — quinoa gene → Arabidopsis ortholog mapping
+- `04_GO_enrichment_results.tsv` — full GO enrichment table (BP, MF, CC)
+- `04_GO_dotplot.png` — dotplot of top 20 enriched GO terms per ontology
+- `04_GO_interpretation.html` — biological interpretation of results
+
+## Optional Steps
+
+These are only needed if protein FASTA sequences are required for downstream analyses (e.g. phylogenetics, structural prediction):
+
+```r
+source("scripts/optional/get_fasta.R")              # fetch FASTAs from NCBI
+bash scripts/optional/blast_against_arabidopsis.sh   # DIAMOND BLAST
+```
 
 ## Notes
-Output folders are automatically created in `results/` using the prefix of your input file.
 
-You can enable filtering for uncharacterized genes by adding the `--unchar` flag in Step 1.
+- Input file should contain one NCBI Entrez gene ID per line, no header
+- `02_annotate_and_go.R` can be run directly on the raw gene list — Step 1 is not required for GO enrichment
+- Orthology is inferred using curated Ensembl Plants mappings (biomaRt), not BLAST
+- GO enrichment uses Arabidopsis annotations (`org.At.tair.db`) since quinoa lacks a comprehensive GO database
+- For best results, use a DEG list from DESeq2 as input rather than a background gene list
