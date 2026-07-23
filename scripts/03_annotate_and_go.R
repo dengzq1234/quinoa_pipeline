@@ -116,10 +116,23 @@ if (nrow(as.data.frame(go_results)) == 0) {
               file.path(output_dir, "04_GO_enrichment_results.tsv"),
               sep="\t", row.names=FALSE, quote=FALSE)
 
-  # Dotplot
-  png(file.path(output_dir, "04_GO_dotplot.png"), width=2400, height=2000, res=300)
-  print(dotplot(go_results, showCategory=20, split="ONTOLOGY") +
-    ggplot2::facet_grid(ONTOLOGY ~ ., scales="free"))
+  # Dotplot — wrap long labels and give each ontology panel enough room
+  go_plot <- go_results
+  go_plot@result$Description <- stringr::str_wrap(go_plot@result$Description, width = 40)
+
+  p_dot <- dotplot(go_plot, showCategory = 15, split = "ONTOLOGY") +
+    ggplot2::facet_grid(ONTOLOGY ~ ., scales = "free", space = "free_y") +
+    ggplot2::theme(
+      axis.text.y  = ggplot2::element_text(size = 8, lineheight = 0.85),
+      axis.text.x  = ggplot2::element_text(size = 8),
+      strip.text   = ggplot2::element_text(size = 9, face = "bold"),
+      legend.text  = ggplot2::element_text(size = 8),
+      legend.title = ggplot2::element_text(size = 8),
+      panel.spacing = ggplot2::unit(0.6, "lines")
+    )
+
+  png(file.path(output_dir, "04_GO_dotplot.png"), width = 2800, height = 4200, res = 300)
+  print(p_dot)
   dev.off()
 
   message("Done ", output_dir)
