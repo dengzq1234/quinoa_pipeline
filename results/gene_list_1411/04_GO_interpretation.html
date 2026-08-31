@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GO Enrichment Interpretation — gene_list_1411</title>
+  <style>
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      max-width: 860px;
+      margin: 60px auto;
+      padding: 0 30px;
+      color: #222;
+      line-height: 1.75;
+      background: #fafaf8;
+    }
+    h1 {
+      font-size: 1.8em;
+      border-bottom: 3px solid #4a7c59;
+      padding-bottom: 12px;
+      color: #2d4f38;
+    }
+    h2 {
+      font-size: 1.2em;
+      color: #3a6347;
+      margin-top: 2em;
+      border-left: 4px solid #4a7c59;
+      padding-left: 12px;
+    }
+    .subtitle {
+      color: #666;
+      font-style: italic;
+      margin-top: -10px;
+      margin-bottom: 30px;
+    }
+    .highlight-box {
+      background: #fff8e1;
+      border-left: 4px solid #f0a500;
+      padding: 14px 18px;
+      border-radius: 4px;
+      margin: 24px 0;
+      font-size: 0.97em;
+    }
+    .tag {
+      display: inline-block;
+      background: #d4e9da;
+      color: #2d4f38;
+      border-radius: 3px;
+      padding: 2px 8px;
+      font-size: 0.85em;
+      font-family: sans-serif;
+      margin-right: 4px;
+    }
+    ul { padding-left: 1.4em; }
+    li { margin-bottom: 6px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.93em;
+      margin: 16px 0;
+    }
+    th {
+      background: #4a7c59;
+      color: white;
+      padding: 9px 12px;
+      text-align: left;
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #ddd;
+    }
+    tr:nth-child(even) td { background: #f4f9f5; }
+    footer {
+      margin-top: 60px;
+      padding-top: 16px;
+      border-top: 1px solid #ccc;
+      font-size: 0.85em;
+      color: #888;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>GO Enrichment Analysis — Biological Interpretation</h1>
+  <p class="subtitle">
+    Input: 1,411 uncharacterized quinoa protein-coding genes &nbsp;·&nbsp;
+    Method: biomaRt (Ensembl Plants) → clusterProfiler → org.At.tair.db &nbsp;·&nbsp;
+    p.adjust &lt; 0.05 (BH)
+  </p>
+
+  <div class="highlight-box">
+    <strong>Important caveat:</strong> This analysis uses the full background list of 1,411 uncharacterized quinoa genes — <em>not</em> a DEG list. The results describe what biological functions these uncharacterized quinoa genes broadly cover, not what is specifically different between salt-tolerant and non-tolerant accessions. GO enrichment on the DESeq2 DEG list is the next required step.
+  </div>
+
+  <h2>Biological Process (BP)</h2>
+  <p>
+    The strongest and most gene-rich signal is in <strong>photosynthesis and light reactions</strong>, with
+    <em>generation of precursor metabolites and energy</em> showing the highest GeneRatio (~0.10),
+    followed by <em>photosynthesis</em> and <em>photosynthesis, light reaction</em>. This indicates
+    that a substantial fraction of "uncharacterized" quinoa genes have Arabidopsis orthologs with
+    well-defined roles in photosynthetic machinery. The likely explanation is that quinoa has
+    diverged sufficiently from Arabidopsis that these genes lost their annotation in quinoa databases,
+    yet they retain the same function.
+  </p>
+  <ul>
+    <li><strong>Photosynthesis / light reactions / light harvesting</strong> — dominant signal; quinoa's uncharacterized genes are enriched for photosynthetic function</li>
+    <li><strong>Pigment and chlorophyll metabolic process</strong> — biosynthesis and turnover of photosynthetic pigments</li>
+    <li><strong>Response to high light intensity</strong> — photoprotection mechanisms</li>
+    <li><strong>Porphyrin-containing compound metabolic process</strong> — chlorophyll and haem biosynthesis</li>
+    <li><strong>Suberin biosynthetic process</strong> — seed coat and root barrier formation; relevant to germination and stress response</li>
+  </ul>
+
+  <h2>Cellular Component (CC)</h2>
+  <p>
+    The CC panel shows the most statistically significant results in the entire plot (deep red dots,
+    p.adjust ~1e-14). Virtually all top terms are <strong>chloroplast and thylakoid</strong> components,
+    directly confirming the BP signal — these uncharacterized quinoa genes encode proteins that
+    physically reside in the chloroplast membrane system.
+  </p>
+  <ul>
+    <li><strong>Chloroplast thylakoid / plastid thylakoid</strong> — most significant terms; proteins embedded in the light-harvesting membranes</li>
+    <li><strong>Thylakoid membrane / photosynthetic membrane / chloroplast thylakoid membrane</strong> — consistent cluster around chloroplast structure</li>
+    <li><strong>Outer membrane / organelle outer membrane</strong> — chloroplast envelope proteins involved in metabolite transport</li>
+    <li><strong>Apoplast</strong> — extracellular space between cell wall and membrane; relevant to cell wall remodelling and secretion during germination</li>
+    <li><strong>Secretory vesicle</strong> — vesicle-mediated protein secretion; relevant to seed storage protein mobilisation</li>
+  </ul>
+
+  <h2>Molecular Function (MF)</h2>
+  <p>
+    The MF panel reveals two biologically distinct groups of functions among these uncharacterized genes:
+  </p>
+  <ul>
+    <li>
+      <strong>Hydrolase activity, acting on glycosyl bonds / hydrolyzing O-glycosyl compounds</strong> —
+      the top MF terms. These are cell wall-degrading enzymes (glycosyl hydrolases) that break down
+      hemicellulose and other storage carbohydrates during germination. This directly connects to
+      Raquel's work on <strong>mannanase enzymes (CqMAN)</strong>, which are a specific subclass of
+      glycosyl hydrolases.
+    </li>
+    <li>
+      <strong>Oxidoreductase activity (multiple terms) / dioxygenase activity</strong> —
+      enzymes involved in redox reactions, likely related to chlorophyll/carotenoid biosynthesis,
+      flavonoid metabolism, and oxidative stress responses.
+    </li>
+    <li>
+      <strong>Molecular transducer activity / signaling receptor activity</strong> —
+      signal perception and transduction; relevant to stress and hormone signalling during germination.
+    </li>
+    <li>
+      <strong>Hormone binding</strong> — likely ABA receptor activity, directly relevant to the
+      germination stress experiments in the project.
+    </li>
+    <li>
+      <strong>Iron ion binding</strong> — iron-containing enzymes, consistent with dioxygenase
+      and oxidoreductase functions above.
+    </li>
+    <li>
+      <strong>Chlorophyll binding</strong> — light-harvesting complex proteins; consistent with
+      the photosynthesis signal throughout.
+    </li>
+  </ul>
+
+  <h2>Summary</h2>
+  <table>
+    <tr><th>Ontology</th><th>Main signal</th><th>Biological relevance</th></tr>
+    <tr>
+      <td>BP</td>
+      <td>Photosynthesis, light reactions</td>
+      <td>Large fraction of uncharacterized quinoa genes are photosynthesis-related but diverged from Arabidopsis</td>
+    </tr>
+    <tr>
+      <td>CC</td>
+      <td>Chloroplast thylakoid (p.adjust ~1e-14)</td>
+      <td>Strongest signal in the plot; these proteins localise to the chloroplast membrane system</td>
+    </tr>
+    <tr>
+      <td>MF</td>
+      <td>Glycosyl hydrolases, oxidoreductases, hormone binding</td>
+      <td>Cell wall remodelling during germination (mannanases), redox metabolism, ABA signalling</td>
+    </tr>
+  </table>
+
+  <h2>Next Step</h2>
+  <p>
+    Run the same GO enrichment pipeline on the <strong>DESeq2 DEG list</strong> (salt-tolerant vs
+    non-tolerant accessions). Only then can we answer Raquel's core biological question: which
+    pathways are specifically associated with salt tolerance, rather than which pathways are broadly
+    represented in the uncharacterized quinoa transcriptome.
+  </p>
+
+  <footer>
+    Generated 2026-07-13 &nbsp;·&nbsp;
+    /home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/gene_list_1411/
+  </footer>
+
+</body>
+</html>
