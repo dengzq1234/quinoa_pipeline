@@ -9,6 +9,31 @@ accessions, and what do those genes do?
 
 ---
 
+## Directory layout
+
+This pipeline sits alongside a separate `rnaseq_analysis/` directory:
+
+```
+quinoa_raquel/
+├── rnaseq_analysis/          # upstream: raw data + DESeq2
+│   ├── data/
+│   │   ├── gene_count.csv    # 58,884 genes × 73 samples (raw counts)
+│   │   └── samples.csv       # sample metadata
+│   ├── scripts/
+│   │   └── deseq2_analysis.R # original DESeq2 script
+│   └── results/
+│       ├── 02_DESeq2_T30_TolxTreatment_full.tsv
+│       └── 03_DEG_list_for_annotation.txt   # 2,551 DEGs → input for Steps 3 & 4
+└── quinoa_pipeline/          # this repo: annotation + clustering + GO
+    ├── scripts/
+    └── results/
+```
+
+`quinoa_pipeline` reads raw data and the DEG list from `rnaseq_analysis/` but
+writes all its own outputs internally.
+
+---
+
 ## Requirements
 
 Run once to install all required R packages:
@@ -26,16 +51,15 @@ source("scripts/00_install_packages.R")
 │   ├── input/              # standalone gene ID lists for annotation-only runs
 │   └── reference/          # Arabidopsis DIAMOND database (optional BLAST step)
 ├── results/
-│   ├── 01_deseq2/          # DESeq2 output (PCA, volcano, heatmap, DEG list)
-│   ├── 02_filter/          # filtered uncharacterized genes (optional)
-│   ├── 03_annotation/      # orthologs + GO enrichment (DEG-level)
-│   ├── 04_cluster/         # expression clustering (degPatterns) + outlier QC
-│   └── 05_cluster_go/      # GO enrichment per expression cluster
+│   ├── degs_salt_tolerance/ # orthologs + GO enrichment (2,551 DEG-level)
+│   ├── 04_cluster/          # expression clustering (degPatterns) + outlier QC
+│   └── 05_cluster_go/       # GO enrichment per expression cluster
 ├── scripts/
 │   ├── 00_install_packages.R       # one-time setup
 │   ├── 01_deseq2_analysis.R        # Step 1: differential expression ST vs NT
 │   ├── 02_filter_gene_list.R       # Step 2 (optional): filter uncharacterized genes
 │   ├── 03_annotate_and_go.R        # Step 3: biomaRt orthology + GO enrichment
+│   ├── 04a_qpcr_gene_expression.R  # Step 4a: qPCR gene NaCl response check
 │   ├── 04_cluster_analysis.R       # Step 4: expression clustering + outlier QC
 │   ├── 05a_build_background_orthologs.R  # Step 5a: full background for GO
 │   ├── 05_cluster_go_enrichment.R  # Step 5: GO enrichment per cluster
@@ -61,7 +85,8 @@ Then run from the `quinoa_pipeline/` directory:
 
 ```r
 source("run_pipeline.R")          # Steps 1–3
-source("scripts/04_cluster_analysis.R")        # Step 4 (standalone)
+source("scripts/04a_qpcr_gene_expression.R")   # Step 4a: qPCR gene check
+source("scripts/04_cluster_analysis.R")        # Step 4: clustering + outlier QC
 source("scripts/05a_build_background_orthologs.R")  # Step 5a (run once)
 source("scripts/05_cluster_go_enrichment.R")   # Step 5 (standalone)
 ```
@@ -112,7 +137,7 @@ refseq_genomic, refseq_mrna, refseq_peptide, related_acc`
 
 ### Step 3 — Arabidopsis ortholog mapping + GO enrichment (`03_annotate_and_go.R`)
 
-**Input:** DEG gene ID list from Step 1 (or Step 2 if filtered)
+**Input:** `rnaseq_analysis/results/03_DEG_list_for_annotation.txt` (2,551 DEGs)
 
 **What it does:**
 - Maps quinoa NCBI gene IDs → quinoa Ensembl IDs → Arabidopsis orthologs
@@ -120,10 +145,28 @@ refseq_genomic, refseq_mrna, refseq_peptide, related_acc`
 - Runs GO enrichment across BP, MF, CC ontologies using `clusterProfiler`
   and `org.At.tair.db`
 
-**Outputs in `results/03_annotation/`:**
-- `04_quinoa_arabidopsis_orthologs.tsv` — quinoa → Arabidopsis gene mapping (637 pairs)
+**Outputs in `results/degs_salt_tolerance/`:**
+- `04_quinoa_arabidopsis_orthologs_2551.tsv` — quinoa → Arabidopsis gene mapping (637 pairs)
 - `04_GO_enrichment_results.tsv` — full GO enrichment table
 - `04_GO_dotplot.png` — dotplot of top 15 GO terms per ontology
+
+---
+
+### Step 4a — qPCR gene expression check (`04a_qpcr_gene_expression.R`)
+
+**Input:** `gene_count.csv`, `samples.csv`
+
+**What it does:**
+- Tests whether Raquel's three qPCR validation genes show significant NaCl
+  response at T30, using model `~ Tol + Treatment` (NaCl main effect)
+- Genes: PPR40 (110697655), AS-1 (110710750), trmH (110703716)
+
+**Output in `results/04_cluster/`:**
+- `Q1_qPCR_NaCl_main_effect.tsv` — log2FC, p-value, padj for the three genes
+
+**Result:** None of the three genes are significantly differentially expressed
+(padj > 0.7 in all cases), suggesting stable expression across conditions —
+consistent with their use as qPCR reference genes.
 
 ---
 
@@ -131,16 +174,13 @@ refseq_genomic, refseq_mrna, refseq_peptide, related_acc`
 
 **Input:** `gene_count.csv`, `samples.csv`, DEG list from Step 1
 
-**What it does (answers Raquel's three questions):**
-- **Q1** — NaCl main effect (model: `~ Tol + Treatment`) for three qPCR validation
-  genes: PPR40 (110697655), AS-1 (110710750), trmH (110703716)
+**What it does:**
 - **Q2** — Expression clustering via `degPatterns` (DEGreport) on the top 1,000
   DEGs by padj. Identifies groups of genes with shared ST/NT × NaCl profiles.
 - **Q3** — Outlier sample detection: PCA of all samples, flag any sample
   > 2 SD from its group centroid (Tol × Treatment × Time)
 
 **Outputs in `results/04_cluster/`:**
-- `Q1_qPCR_NaCl_main_effect.tsv` — log2FC, p-value, padj for the three qPCR genes
 - `Q2_degPatterns_clusters.png` — expression profile plot (4 clusters found)
 - `Q2_cluster_assignments.tsv` — per-gene cluster assignment (947 genes × 4 clusters)
 - `Q3_PCA_outliers.png` — PCA with outlier samples circled
@@ -232,3 +272,7 @@ source("scripts/optional/get_fasta.R")
 - Orthology uses curated Ensembl Plants mappings, not BLAST hits
 - The biomaRt GET patch in Step 5a is specific to biomaRt ≥ 2.66 on
   Ensembl Plants; earlier versions or other marts do not need it
+- `data/input/gene_list_1411.txt` is a candidate gene list from a previous
+  batch of data; it is no longer used in the current pipeline and is kept
+  for reference only. The current DEG list is the 2,551-gene set from
+  `rnaseq_analysis/results/03_DEG_list_for_annotation.txt`

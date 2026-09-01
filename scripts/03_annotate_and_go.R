@@ -4,8 +4,8 @@ library(org.At.tair.db)
 library(dplyr)
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-if (!exists("input_file")) input_file <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/data/input/gene_list_1411.txt"
-if (!exists("output_dir")) output_dir <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/gene_list_1411/"
+if (!exists("input_file")) input_file <- "/home/ziqi/Projects/quinoa_raquel/rnaseq_analysis/results/03_DEG_list_for_annotation.txt"
+if (!exists("output_dir")) output_dir <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/degs_salt_tolerance/"
 
 dir.create(output_dir, recursive=TRUE, showWarnings=FALSE)
 

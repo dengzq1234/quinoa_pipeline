@@ -1,0 +1,87 @@
+Pipeline Update Summary
+Date: 2026-07-14
+=======================================================
+
+
+1) Pipeline Update
+-------------------
+
+The quinoa annotation pipeline has been converted from Python/bash to R and
+restructured. The core change is that BLAST-based annotation has been replaced
+with a cleaner R-native approach using biomaRt (Ensembl Plants), which directly
+answers your question about whether rentrez + blastp was the right approach — a
+better alternative exists.
+
+The new pipeline has two core R scripts:
+
+- 01_filter_gene_list.R — filters uncharacterized protein-coding genes from a
+  list of NCBI gene IDs using rentrez and xml2 (replaces the Python Biopython
+  script)
+
+- 02_annotate_and_go.R — maps quinoa genes to Arabidopsis orthologs via Ensembl
+  Plants (biomaRt) and runs GO enrichment using clusterProfiler, fully automated
+  in R
+
+FASTA retrieval and DIAMOND BLAST are still available as optional scripts but
+are no longer part of the main workflow. The full pipeline can now be run from a
+single run_pipeline.R entry point. The original Python scripts are archived in a
+legacy/ folder.
+
+
+2) Test Run Results (1,411 uncharacterized quinoa genes)
+---------------------------------------------------------
+
+Important note: this test used the full background gene list, not a DEG list.
+It shows what functions the uncharacterized quinoa transcriptome broadly covers,
+not what is specifically associated with salt tolerance.
+
+As a test, the pipeline was run on 1,411 uncharacterized quinoa genes. Using
+biomaRt, quinoa genes were mapped to Arabidopsis orthologs via curated Ensembl
+Plants annotations — no FASTA files or local BLAST required. clusterProfiler
+then ran GO enrichment automatically across all three ontologies (BP, MF, CC)
+in a single step, producing a results table and dotplot directly in R.
+
+The output identified enriched terms including photosynthesis, chloroplast
+thylakoid components (p.adjust ~1e-14), and glycosyl hydrolase activity — all
+biologically meaningful and consistent with the germination context. This
+demonstrates that the approach works end-to-end and is ready to be applied to
+the DESeq2 DEG list to address the core question of salt tolerance.
+
+
+3) Relationship Between the Two Pipelines
+------------------------------------------
+
+There are now two pipelines in the project. They are sequential — the output
+of the first feeds directly into the second.
+
+Pipeline 1 — DESeq2 differential expression (rnaseq_analysis/)
+  Input : gene_count.csv (58,884 genes × 73 samples, raw read counts)
+          samples.csv (sample metadata: Treatment, Tol, Time)
+  Script: scripts/deseq2_analysis.R
+  What it does:
+    - Filters to T30 samples (post-stress phase)
+    - Model: ~ Tol + Treatment + Tol:Treatment  (LRT)
+      NOTE: uses Tol (ST/NT biological class), NOT Tolerance (accession ID)
+    - Identifies genes whose NaCl response differs between salt-tolerant (ST)
+      and non-tolerant (NT) accessions
+  Output: 03_DEG_list_for_annotation.txt (NCBI gene IDs of significant DEGs)
+
+                         ↓  (this file is the bridge)
+
+Pipeline 2 — Annotation and GO enrichment (quinoa_pipeline/)
+  Input : 03_DEG_list_for_annotation.txt (from Pipeline 1)
+  Scripts: scripts/01_filter_gene_list.R → scripts/02_annotate_and_go.R
+  What it does:
+    - Filters to uncharacterized protein-coding genes (rentrez + xml2)
+    - Maps quinoa genes to Arabidopsis orthologs via Ensembl Plants (biomaRt)
+    - Runs GO enrichment across BP, MF, CC ontologies (clusterProfiler)
+  Output: GO enrichment table, dotplot, and biological interpretation HTML
+
+Together they answer Raquel's core question:
+  "What biological functions distinguish salt-tolerant from non-tolerant quinoa
+   accessions in response to NaCl stress?"
+
+  Pipeline 1 answers: WHICH genes are differentially expressed.
+  Pipeline 2 answers: WHAT those genes do biologically.
+
+claude --resume 780fcb8b-6b0e-4759-a75f-8b527f3d82c3
