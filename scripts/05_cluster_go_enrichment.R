@@ -1,8 +1,13 @@
 ###############################################################
 ### 05_cluster_go_enrichment.R
 ### GO enrichment analysis for each expression cluster
-### Clusters from: results/04_cluster/Q2_cluster_assignments.tsv
-### Orthologs from: results/degs_salt_tolerance/04_quinoa_arabidopsis_orthologs_2551.tsv
+### Clusters from:    results/04_cluster/Q2_cluster_assignments.tsv
+### Orthologs from:    results/degs_salt_tolerance/04_quinoa_arabidopsis_orthologs_2551.tsv
+### GO universe from:  results/05_cluster_go/background_orthologs_all.tsv  (Step 5a)
+###
+### The universe is the Arabidopsis-ortholog set of ALL expressed quinoa genes
+### (rowSums >= 10), not just the DEGs — this is the statistically correct
+### background for enrichGO. Outputs are suffixed "_corrected".
 ###############################################################
 
 library(clusterProfiler)
@@ -15,6 +20,11 @@ library(stringr)
 if (!exists("output_dir")) output_dir <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/05_cluster_go"
 if (!exists("cluster_file")) cluster_file <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/04_cluster/Q2_cluster_assignments.tsv"
 if (!exists("ortholog_file")) ortholog_file <- "/home/ziqi/Projects/quinoa_raquel/quinoa_pipeline/results/degs_salt_tolerance/04_quinoa_arabidopsis_orthologs_2551.tsv"
+if (!exists("background_file")) background_file <- file.path(output_dir, "background_orthologs_all.tsv")
+
+if (!file.exists(background_file))
+  stop("Background ortholog table not found: ", background_file,
+       "\nRun scripts/05a_build_background_orthologs.R first.")
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -48,9 +58,25 @@ merged <- clusters %>%
 message("\nGenes with Arabidopsis orthologs per cluster:")
 print(table(merged$cluster[!is.na(merged$athaliana_eg_homolog_ensembl_gene)]))
 
-# Background: all Arabidopsis genes from ortholog table (genome-wide reference)
-background <- unique(orthologs_valid$athaliana_eg_homolog_ensembl_gene)
-message("Background gene set size: ", length(background))
+# Background (GO universe): Arabidopsis orthologs of ALL expressed quinoa genes,
+# built by Step 5a. This is the correct enrichGO background — using only the DEG
+# orthologs here would massively inflate enrichment.
+message("Loading background ortholog table (Step 5a)...")
+bg_tbl     <- read.table(background_file, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+background <- bg_tbl %>%
+  filter(!is.na(athaliana_eg_homolog_ensembl_gene),
+         athaliana_eg_homolog_ensembl_gene != "") %>%
+  pull(athaliana_eg_homolog_ensembl_gene) %>%
+  unique()
+message("GO universe size (unique Arabidopsis genes): ", length(background))
+
+# Sanity check: cluster genes should be a subset of the universe
+cluster_at <- unique(na.omit(merged$athaliana_eg_homolog_ensembl_gene))
+n_missing  <- sum(!cluster_at %in% background)
+if (n_missing > 0)
+  message("Note: ", n_missing, " / ", length(cluster_at),
+          " cluster orthologs are not in the universe — adding them.")
+background <- unique(c(background, cluster_at))
 
 # ── GO enrichment per cluster ──────────────────────────────────────────────────
 all_go_results <- list()
@@ -101,7 +127,7 @@ for (cl in 1:4) {
   }
 
   # Save TSV
-  tsv_out <- file.path(output_dir, paste0("cluster", cl, "_GO_results.tsv"))
+  tsv_out <- file.path(output_dir, paste0("cluster", cl, "_GO_corrected.tsv"))
   write.table(go_df, tsv_out, sep = "\t", row.names = FALSE, quote = FALSE)
   message("Saved: ", basename(tsv_out))
 
@@ -125,7 +151,7 @@ for (cl in 1:4) {
     ) +
     ggtitle(cluster_labels[as.character(cl)])
 
-  png_out <- file.path(output_dir, paste0("cluster", cl, "_GO_dotplot.png"))
+  png_out <- file.path(output_dir, paste0("cluster", cl, "_GO_corrected_dotplot.png"))
   png(png_out, width = 2800, height = 3800, res = 300)
   print(p)
   dev.off()
@@ -138,13 +164,13 @@ for (cl in 1:4) {
 # ── Combined summary table ─────────────────────────────────────────────────────
 if (length(all_go_results) > 0) {
   combined <- bind_rows(all_go_results)
-  combined_out <- file.path(output_dir, "all_clusters_GO_combined.tsv")
+  combined_out <- file.path(output_dir, "all_clusters_GO_corrected_combined.tsv")
   write.table(combined, combined_out, sep = "\t", row.names = FALSE, quote = FALSE)
 
   message("\n", paste(rep("═", 60), collapse=""))
   message("Combined GO table: ", nrow(combined), " terms across ",
           length(all_go_results), " clusters")
-  message("Saved: all_clusters_GO_combined.tsv")
+  message("Saved: ", basename(combined_out))
 
   message("\nTop 3 GO terms per cluster (sorted by p.adjust):")
   combined %>%
